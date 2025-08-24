@@ -78,3 +78,6 @@ $RECYCLE.BIN/
 
 # Gradle
 .gradle/
+
+Assets/Characters/Ch15_nonPBR.fbx
+
