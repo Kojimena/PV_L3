@@ -2,179 +2,155 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class EnemyAI2 : MonoBehaviour
+public class EnemyAI4 : MonoBehaviour
 {
-    private enum State { Patrol, Chase }
-
-    [Header("Refs")]
+    private enum State { Patrol, Chase, Attack }
     [SerializeField] private Transform[] waypoints;
-    [SerializeField] private NavMeshAgent agent;
-    [SerializeField] private string playerTag = "Player";
-
-    [Header("Percepción")]
-    [SerializeField] private float viewRadius = 12f;        // radio de detección
-    [SerializeField] private float viewAngle = 110f;        // ángulo de detección
-    [SerializeField] private LayerMask obstacleMask;        // capas que bloquean la vista
-
-    [Header("Movimiento")]
-    [SerializeField] private float patrolSpeed = 2.2f;
-    [SerializeField] private float chaseSpeed = 3.8f;
-    [SerializeField] private float waypointTolerance = 0.6f; 
-    [SerializeField] private float waitAtWaypoint = 0.5f;    
-
-    [Header("Persecución")]
-    [SerializeField] private float loseTargetAfter = 3.0f;   // intervalo para volver a patrullar
-
-    private State state = State.Patrol;
-    private int currentWaypoint = 0;
-    private float waitTimer = 0f;
-
-    private Transform player;
-    private float timeSinceLastSight = Mathf.Infinity;
-
-    private void Reset()
+    
+    private int wpIndex = 0;
+    private State currentState = State.Patrol;
+    
+    private Animator anim => GetComponentInChildren<Animator>(); 
+    private NavMeshAgent agent => GetComponent<NavMeshAgent>();
+    
+    // Chase
+    private float viewRadius = 10.0f;
+    private float viewAngle = 90.0f;
+    [SerializeField] private Transform objective;
+    private float loseSightTimer = 0.0f; // Tiempo para perder el objetivo si no está a la vista
+    private float loseSightTime = 3.0f; // Tiempo para perder el objetivo si no está a la vista
+    
+    // Attack 
+    private float attackRange = 2.0f; // Distancia para iniciar ataque
+    private float attackCooldown = 1.0f; // Tiempo entre ataques
+    private float lastAttackTime = 0.0f; // Tiempo del último ataque
+    
+    void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
-    }
-
-    private void Start()
-    {
-        if (agent == null) agent = GetComponent<NavMeshAgent>();
-
-        GameObject playerGO = GameObject.FindGameObjectWithTag(playerTag);
-        if (playerGO != null) player = playerGO.transform;
-
-        if (waypoints == null || waypoints.Length == 0)
+        if (waypoints.Length > 0)
         {
-            Debug.LogWarning($"{name}: No hay waypoints asignados.");
+            agent.SetDestination(waypoints[wpIndex].position);
         }
-
-        GoToNextWaypoint();
-        agent.speed = patrolSpeed;
-        state = State.Patrol;
+        
     }
 
-    private void Update()
+    void Update()
     {
-        switch (state)
+        anim.SetFloat("Speed", agent.velocity.magnitude);
+        
+        switch (currentState)
         {
             case State.Patrol:
-                PatrolUpdate();
+                Patrol();
                 break;
             case State.Chase:
-                ChaseUpdate();
+                Chase();
+                break;
+            case State.Attack:
+                Attack();
+                break;
+            default:
                 break;
         }
+        
     }
-
-    private void PatrolUpdate()
+    
+    private void Attack()
     {
-        agent.stoppingDistance = 0f;
-        agent.speed = patrolSpeed;
-
-        if (waypoints != null && waypoints.Length > 0)
+        transform.LookAt(objective);
+        
+        if (Time.time > lastAttackTime + attackCooldown)
         {
-            if (!agent.pathPending && agent.remainingDistance <= waypointTolerance)
+            agent.SetDestination(objective.position);
+            anim.SetBool("isAttacking", true);
+            lastAttackTime = Time.time;
+            // Lógica de daño
+        }
+        
+        float distanceToObjective = Vector3.Distance(transform.position, objective.position);
+        
+        if (distanceToObjective > attackRange)
+        {
+            currentState = State.Chase; // Volver a perseguir si el objetivo está fuera de rango
+            anim.SetBool("isAttacking", false);
+        }
+        else if (!LookForObjective())
+        {
+            currentState = State.Patrol; // Volver a patrullar si el objetivo no está a la vista
+            anim.SetBool("isAttacking", false);
+        }
+        
+    }
+    
+    private void Chase()
+    {
+        agent.SetDestination(objective.position);
+        agent.speed = 5.0f;
+        
+        float distanceToObjective = Vector3.Distance(transform.position, objective.position);
+        if (distanceToObjective <= attackRange)
+        {
+            currentState = State.Attack;
+            anim.SetTrigger("isAttacking");
+        }
+        else if (distanceToObjective > viewRadius)
+        {
+            loseSightTimer += Time.deltaTime;
+            if (loseSightTimer >= loseSightTime)
             {
-                waitTimer += Time.deltaTime;
-                if (waitTimer >= waitAtWaypoint)
-                {
-                    waitTimer = 0f;
-                    GoToNextWaypoint();
-                }
+                currentState = State.Patrol;
+                loseSightTimer = 0.0f;
             }
         }
-
-        if (PlayerInSight())
+        else
         {
-            state = State.Chase;
-            agent.speed = chaseSpeed;
-            timeSinceLastSight = 0f;
+            loseSightTimer = 0.0f; // Resetear el temporizador si el objetivo está a la vista
+        }
+        
+    }
+    
+    private void Patrol()
+    {
+        agent.speed = 2.5f;
+        if (agent.remainingDistance < 0.5f)
+        {
+            wpIndex++;
+            wpIndex %= waypoints.Length;
+            agent.SetDestination(waypoints[wpIndex].position);
+        }
+        if (LookForObjective())
+        {
+            currentState = State.Chase;
         }
     }
 
-    private void ChaseUpdate()
+    private bool LookForObjective()
     {
-        if (player == null)
+        if (objective == null) return false;
+        Vector3 directionToObjective = (objective.position - transform.position).normalized;
+        if (directionToObjective.magnitude > viewRadius) return false;
+        
+        float angleToObjective = Vector3.Angle(transform.forward, directionToObjective);
+        if (angleToObjective > viewAngle/2.0f) return false;
+        
+        if (Physics.Raycast(transform.position + Vector3.up, directionToObjective, out RaycastHit hit, viewRadius))
         {
-            state = State.Patrol;
-            return;
-        }
-
-        agent.stoppingDistance = 0f;
-        agent.speed = chaseSpeed;
-
-        // Perseguir jugador siempre
-        agent.SetDestination(player.position);
-
-        bool canSee = PlayerInSight();
-        if (canSee) 
-            timeSinceLastSight = 0f; 
-        else 
-            timeSinceLastSight += Time.deltaTime;
-
-        if (timeSinceLastSight >= loseTargetAfter)
-        {
-            state = State.Patrol;
-            GoToNextWaypoint();
-        }
-    }
-
-    private void GoToNextWaypoint()
-    {
-        if (waypoints == null || waypoints.Length == 0) return;
-
-        currentWaypoint = (currentWaypoint + 1) % waypoints.Length;
-        if (waypoints[currentWaypoint] != null)
-        {
-            agent.stoppingDistance = 0f;
-            agent.SetDestination(waypoints[currentWaypoint].position);
-        }
-    }
-
-    private bool PlayerInSight()
-    {
-        if (player == null) return false;
-
-        Vector3 toTarget = (player.position - transform.position);
-        float distance = toTarget.magnitude;
-        if (distance > viewRadius) return false;
-
-        Vector3 toTargetDir = toTarget.normalized;
-        float angleToTarget = Vector3.Angle(transform.forward, toTargetDir);
-        if (angleToTarget > viewAngle * 0.5f) return false;
-
-        return true;
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, viewRadius);
-
-        Vector3 leftBoundary = DirFromAngle(-viewAngle / 2f, true);
-        Vector3 rightBoundary = DirFromAngle(viewAngle / 2f, true);
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(transform.position, transform.position + leftBoundary * viewRadius);
-        Gizmos.DrawLine(transform.position, transform.position + rightBoundary * viewRadius);
-
-        if (waypoints != null)
-        {
-            Gizmos.color = Color.green;
-            for (int i = 0; i < waypoints.Length; i++)
+            if (hit.transform == objective)
             {
-                if (waypoints[i] == null) continue;
-                Gizmos.DrawSphere(waypoints[i].position, 0.2f);
-                if (i + 1 < waypoints.Length && waypoints[i + 1] != null)
-                    Gizmos.DrawLine(waypoints[i].position, waypoints[i + 1].position);
+                return true; // Encontramos el objetivo
             }
         }
+        return false; // No hay línea de visión clara al objetivo
     }
 
-    private Vector3 DirFromAngle(float angleInDegrees, bool angleIsGlobal)
+    private void OnDrawGizmos()
     {
-        if (!angleIsGlobal) angleInDegrees += transform.eulerAngles.y;
-        float rad = angleInDegrees * Mathf.Deg2Rad;
-        return new Vector3(Mathf.Sin(rad), 0, Mathf.Cos(rad));
+        Gizmos.color = LookForObjective() ? Color.green : Color.red;
+        Vector3 leftBoundary = Quaternion.Euler(0, -viewAngle / 2.0f, 0) * transform.forward;
+        Vector3 rightBoundary = Quaternion.Euler(0, viewAngle / 2.0f, 0) * transform.forward;
+        
+        Gizmos.DrawRay(transform.position + Vector3.up, leftBoundary * viewRadius);
+        Gizmos.DrawRay(transform.position + Vector3.up, rightBoundary * viewRadius);
+        
     }
 }

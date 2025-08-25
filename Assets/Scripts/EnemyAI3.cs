@@ -4,12 +4,13 @@ using UnityEngine.AI;
 
 public class EnemyAI3 : MonoBehaviour
 {
-    private enum State { Idle, Angry }
+    private enum State { Idle, Angry, Rescue }
 
     [Header("Refs")]
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private Animator animator;
     [SerializeField] private string playerTag = "Player";
+    [SerializeField] private Transform rescueTarget; 
 
     [Header("Percepción")]
     [SerializeField] private float viewRadius = 12f;
@@ -21,6 +22,7 @@ public class EnemyAI3 : MonoBehaviour
     [SerializeField] private float rotateTowardsPlayerSpeed = 9f;
 
     private static readonly int HashIsAngry = Animator.StringToHash("IsAngry");
+    private static readonly int HashIsWalking = Animator.StringToHash("IsWalking"); 
 
     private State state = State.Idle;
     private Transform player;
@@ -48,12 +50,12 @@ public class EnemyAI3 : MonoBehaviour
         if (animator != null) animator.applyRootMotion = false;
 
         SetIsAngry(false);
+        SetIsWalking(false);
         state = State.Idle;
     }
 
     private void Update()
     {
-
         switch (state)
         {
             case State.Idle:
@@ -61,6 +63,9 @@ public class EnemyAI3 : MonoBehaviour
                 break;
             case State.Angry:
                 AngryUpdate();
+                break;
+            case State.Rescue:
+                RescueUpdate();
                 break;
         }
     }
@@ -90,19 +95,50 @@ public class EnemyAI3 : MonoBehaviour
         agent.velocity = Vector3.zero;
 
         if (timeSinceLastSight >= loseTargetAfter)
-            EnterIdle();
+        {
+            EnterRescue();
+        }
+    }
+
+    private void RescueUpdate()
+    {
+        if (rescueTarget == null) { EnterIdle(); return; }
+
+        agent.isStopped = false;
+        agent.SetDestination(rescueTarget.position);
+        SetIsWalking(true);
+
+        // cuando llega a destino
+        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.2f)
+        {
+            agent.isStopped = true;
+            SetIsWalking(false);
+            // evento de "rescatar"
+            agent.updateRotation = false;
+        }
     }
 
     private void EnterAngry()
     {
         state = State.Angry;
         SetIsAngry(true);
+        SetIsWalking(false);
     }
 
     private void EnterIdle()
     {
         state = State.Idle;
         SetIsAngry(false);
+        SetIsWalking(false);
+    }
+
+    private void EnterRescue()
+    {
+        state = State.Rescue;
+        SetIsAngry(false);
+        SetIsWalking(true);
+        
+        agent.updateRotation = true;
     }
 
     private bool PlayerInSight()
@@ -137,7 +173,11 @@ public class EnemyAI3 : MonoBehaviour
     {
         if (animator != null) animator.SetBool(HashIsAngry, value);
     }
-    
+
+    private void SetIsWalking(bool value)
+    {
+        if (animator != null) animator.SetBool(HashIsWalking, value);
+    }
 
     private Vector3 DirFromAngle(float angleInDegrees, bool angleIsGlobal)
     {
