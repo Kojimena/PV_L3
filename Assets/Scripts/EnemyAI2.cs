@@ -153,4 +153,17 @@ public class EnemyAI4 : MonoBehaviour
         Gizmos.DrawRay(transform.position + Vector3.up, rightBoundary * viewRadius);
         
     }
+    
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player"))
+        {
+            PlayerHealth ph = other.GetComponent<PlayerHealth>();
+            if (ph != null)
+            {
+                ph.TakeDamage(1); // resta 1 vida por golpe
+            }
+        }
+    }
+
 }
