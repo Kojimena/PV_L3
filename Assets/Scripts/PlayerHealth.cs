@@ -1,10 +1,12 @@
 using UnityEngine;
 using TMPro; 
+using UnityEngine.SceneManagement;
 
 public class PlayerHealth : MonoBehaviour
 {
     public int maxLives = 10;
     private int currentLives;
+    [SerializeField] private float fallThreshold = -10f;
 
     [Header("UI")]
     public TMP_Text livesText; 
@@ -13,6 +15,19 @@ public class PlayerHealth : MonoBehaviour
     {
         currentLives = maxLives;
         UpdateLivesUI();
+    }
+    
+    void Update()
+    {
+        if (transform.position.y < fallThreshold)
+        {
+            RestartScene();
+        }
+    }
+    
+    private void RestartScene()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }
 
     public void TakeDamage(int amount)
