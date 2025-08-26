@@ -14,6 +14,10 @@ public class EnemyAI1 : MonoBehaviour
     [SerializeField] private float jumpDuration = 0.6f;        // segundos
     [SerializeField] private float jumpHeight   = 1.2f;        // altura de la parábola
     [SerializeField] private bool useParabolaMovement = true;  
+    
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip hitSfx;
+
 
     private int wpIndex = 0;
     private State currentState = State.Patrol;
@@ -218,6 +222,7 @@ public class EnemyAI1 : MonoBehaviour
             if (ph != null)
             {
                 ph.TakeDamage(1); // resta 1 vida por golpe
+                if (sfxSource != null && hitSfx != null) sfxSource.PlayOneShot(hitSfx);
             }
         }
     }

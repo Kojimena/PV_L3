@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class EnemyAI4 : MonoBehaviour
+public class EnemyAI2 : MonoBehaviour
 {
     private enum State { Patrol, Chase, Attack }
     [SerializeField] private Transform[] waypoints;
@@ -12,6 +12,10 @@ public class EnemyAI4 : MonoBehaviour
     
     private Animator anim => GetComponentInChildren<Animator>(); 
     private NavMeshAgent agent => GetComponent<NavMeshAgent>();
+    
+    [SerializeField] private AudioSource sfxSource;
+    [SerializeField] private AudioClip hitSfx;
+
     
     // Chase
     private float viewRadius = 10.0f;
@@ -64,7 +68,6 @@ public class EnemyAI4 : MonoBehaviour
             agent.SetDestination(objective.position);
             anim.SetBool("isAttacking", true);
             lastAttackTime = Time.time;
-            // Lógica de daño
         }
         
         float distanceToObjective = Vector3.Distance(transform.position, objective.position);
@@ -162,6 +165,7 @@ public class EnemyAI4 : MonoBehaviour
             if (ph != null)
             {
                 ph.TakeDamage(1); // resta 1 vida por golpe
+                if (sfxSource != null && hitSfx != null) sfxSource.PlayOneShot(hitSfx);
             }
         }
     }

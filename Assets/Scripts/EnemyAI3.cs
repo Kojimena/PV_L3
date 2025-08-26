@@ -12,6 +12,7 @@ public class EnemyAI3 : MonoBehaviour
     [SerializeField] private float viewRadius = 10f;
     [SerializeField] private float viewAngle = 90f;
     [SerializeField] private float angryDuration = 3.5f;
+    
 
     private int wpIndex = 0;
     private State currentState = State.Angry;
@@ -65,7 +66,7 @@ public class EnemyAI3 : MonoBehaviour
                 wpIndex = (wpIndex + 1) % waypoints.Length;
                 agent.SetDestination(waypoints[wpIndex].position);
             }
-            agent.speed = 2.0f;
+            agent.speed = 1.0f;
             anim.SetBool("IsWalking", true);
         }
         anim.SetBool("IsAngry", false);
