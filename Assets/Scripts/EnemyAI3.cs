@@ -4,197 +4,112 @@ using UnityEngine.AI;
 
 public class EnemyAI3 : MonoBehaviour
 {
-    private enum State { Idle, Angry, Rescue }
+    private enum State { Angry, Rescue }
 
-    [Header("Refs")]
-    [SerializeField] private NavMeshAgent agent;
-    [SerializeField] private Animator animator;
-    [SerializeField] private string playerTag = "Player";
-    [SerializeField] private Transform rescueTarget; 
+    [SerializeField] private Transform[] waypoints;
+    [SerializeField] private Transform rescueTarget;
+    [SerializeField] private Transform objective;
+    [SerializeField] private float viewRadius = 10f;
+    [SerializeField] private float viewAngle = 90f;
+    [SerializeField] private float angryDuration = 3.5f;
 
-    [Header("Percepción")]
-    [SerializeField] private float viewRadius = 12f;
-    [SerializeField] private float viewAngle  = 110f;
-    [SerializeField] private LayerMask obstacleMask;
+    private int wpIndex = 0;
+    private State currentState = State.Angry;
+    private float angryTimer = 0f;
 
-    [Header("Comportamiento")]
-    [SerializeField] private float loseTargetAfter = 3.0f;
-    [SerializeField] private float rotateTowardsPlayerSpeed = 9f;
+    private Animator anim => GetComponentInChildren<Animator>();
+    private NavMeshAgent agent => GetComponent<NavMeshAgent>();
 
-    private static readonly int HashIsAngry = Animator.StringToHash("IsAngry");
-    private static readonly int HashIsWalking = Animator.StringToHash("IsWalking"); 
-
-    private State state = State.Idle;
-    private Transform player;
-    private float timeSinceLastSight = Mathf.Infinity;
-
-    private void Reset()
+    void Start()
     {
-        agent = GetComponent<NavMeshAgent>();
-        animator = GetComponentInChildren<Animator>();
+        if (waypoints != null && waypoints.Length > 0)
+            agent.SetDestination(waypoints[wpIndex].position);
     }
 
-    private void Start()
+    void Update()
     {
-        if (agent == null) agent = GetComponent<NavMeshAgent>();
-        if (animator == null) animator = GetComponentInChildren<Animator>();
-
-        GameObject playerGO = GameObject.FindGameObjectWithTag(playerTag);
-        if (playerGO != null) player = playerGO.transform;
-
-        agent.isStopped = true;
-        agent.ResetPath();
-        agent.updatePosition = true;   
-        agent.updateRotation = false;  
-
-        if (animator != null) animator.applyRootMotion = false;
-
-        SetIsAngry(false);
-        SetIsWalking(false);
-        state = State.Idle;
-    }
-
-    private void Update()
-    {
-        switch (state)
+        switch (currentState)
         {
-            case State.Idle:
-                IdleUpdate();
-                break;
             case State.Angry:
-                AngryUpdate();
+                Angry();
                 break;
             case State.Rescue:
-                RescueUpdate();
+                Rescue();
                 break;
         }
     }
 
-    private void IdleUpdate()
+    private void Angry()
     {
-        agent.isStopped = true;
-        agent.velocity = Vector3.zero;
-
-        if (PlayerInSight())
+        bool sees = LookForObjective();
+        if (sees)
         {
-            timeSinceLastSight = 0f;
-            EnterAngry();
+            transform.LookAt(objective);
+            anim.SetBool("IsAngry", true);
+            anim.SetBool("IsWalking", false);
+            angryTimer += Time.deltaTime;
+            if (angryTimer >= angryDuration)
+            {
+                currentState = State.Rescue;
+                anim.SetBool("IsAngry", false);
+                angryTimer = 0f;
+            }
+            return;
         }
+
+        if (waypoints != null && waypoints.Length > 0)
+        {
+            float distanceToWaypoint = Vector3.Distance(transform.position, waypoints[wpIndex].position);
+            if (distanceToWaypoint < 1.5f)
+            {
+                wpIndex = (wpIndex + 1) % waypoints.Length;
+                agent.SetDestination(waypoints[wpIndex].position);
+            }
+            agent.speed = 2.0f;
+            anim.SetBool("IsWalking", true);
+        }
+        anim.SetBool("IsAngry", false);
+        angryTimer = 0f;
     }
 
-    private void AngryUpdate()
+    private void Rescue()
     {
-        if (player == null) { EnterIdle(); return; }
-
-        FaceTargetHorizontally(player.position, rotateTowardsPlayerSpeed);
-
-        bool canSee = PlayerInSight();
-        timeSinceLastSight = canSee ? 0f : timeSinceLastSight + Time.deltaTime;
-
-        agent.isStopped = true;
-        agent.velocity = Vector3.zero;
-
-        if (timeSinceLastSight >= loseTargetAfter)
-        {
-            EnterRescue();
-        }
-    }
-
-    private void RescueUpdate()
-    {
-        if (rescueTarget == null) { EnterIdle(); return; }
-
+        if (rescueTarget == null) return;
+        agent.speed = 2.0f;
         agent.isStopped = false;
         agent.SetDestination(rescueTarget.position);
-        SetIsWalking(true);
-
-        // cuando llega a destino
-        if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + 0.2f)
+        float distanceToObjective = Vector3.Distance(transform.position, rescueTarget.position);
+        if (distanceToObjective < 1.5f)
         {
+            anim.SetBool("IsWalking", false);
             agent.isStopped = true;
-            SetIsWalking(false);
-            // evento de "rescatar"
-            agent.updateRotation = false;
+        }
+        else
+        {
+            anim.SetBool("IsWalking", true);
         }
     }
 
-    private void EnterAngry()
+    private bool LookForObjective()
     {
-        state = State.Angry;
-        SetIsAngry(true);
-        SetIsWalking(false);
-    }
-
-    private void EnterIdle()
-    {
-        state = State.Idle;
-        SetIsAngry(false);
-        SetIsWalking(false);
-    }
-
-    private void EnterRescue()
-    {
-        state = State.Rescue;
-        SetIsAngry(false);
-        SetIsWalking(true);
-        
-        agent.updateRotation = true;
-    }
-
-    private bool PlayerInSight()
-    {
-        if (player == null) return false;
-
-        Vector3 toTarget = player.position - transform.position;
-        float distance = toTarget.magnitude;
+        if (objective == null) return false;
+        Vector3 toObjective = objective.position - transform.position;
+        float distance = toObjective.magnitude;
         if (distance > viewRadius) return false;
-
-        Vector3 toTargetDir = toTarget.normalized;
-        float angleToTarget = Vector3.Angle(transform.forward, toTargetDir);
-        if (angleToTarget > viewAngle * 0.5f) return false;
-
-        Vector3 eyePos = transform.position + Vector3.up * 1.7f;
-        if (Physics.Raycast(eyePos, toTargetDir, distance, obstacleMask))
-            return false;
-
-        return true;
+        Vector3 dir = toObjective.normalized;
+        float angleToObjective = Vector3.Angle(transform.forward, dir);
+        if (angleToObjective > viewAngle * 0.5f) return false;
+        if (Physics.Raycast(transform.position + Vector3.up, dir, out RaycastHit hit, viewRadius))
+            return hit.transform == objective || hit.transform.IsChildOf(objective);
+        return false;
     }
 
-    private void FaceTargetHorizontally(Vector3 targetPos, float turnSpeed)
+    private void OnDrawGizmos()
     {
-        Vector3 dir = (targetPos - transform.position);
-        dir.y = 0f;
-        if (dir.sqrMagnitude < 0.0001f) return;
-        Quaternion lookRot = Quaternion.LookRotation(dir);
-        transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, Time.deltaTime * turnSpeed);
-    }
-
-    private void SetIsAngry(bool value)
-    {
-        if (animator != null) animator.SetBool(HashIsAngry, value);
-    }
-
-    private void SetIsWalking(bool value)
-    {
-        if (animator != null) animator.SetBool(HashIsWalking, value);
-    }
-
-    private Vector3 DirFromAngle(float angleInDegrees, bool angleIsGlobal)
-    {
-        if (!angleIsGlobal) angleInDegrees += transform.eulerAngles.y;
-        float rad = angleInDegrees * Mathf.Deg2Rad;
-        return new Vector3(Mathf.Sin(rad), 0, Mathf.Cos(rad));
-    }
-
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, viewRadius);
-
-        Vector3 leftBoundary = DirFromAngle(-viewAngle / 2f, true);
-        Vector3 rightBoundary = DirFromAngle(viewAngle / 2f, true);
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(transform.position, transform.position + leftBoundary * viewRadius);
-        Gizmos.DrawLine(transform.position, transform.position + rightBoundary * viewRadius);
+        Gizmos.color = LookForObjective() ? Color.green : Color.red;
+        Vector3 leftBoundary = Quaternion.Euler(0, -viewAngle * 0.5f, 0) * transform.forward;
+        Vector3 rightBoundary = Quaternion.Euler(0, viewAngle * 0.5f, 0) * transform.forward;
+        Gizmos.DrawRay(transform.position + Vector3.up, leftBoundary * viewRadius);
+        Gizmos.DrawRay(transform.position + Vector3.up, rightBoundary * viewRadius);
     }
 }

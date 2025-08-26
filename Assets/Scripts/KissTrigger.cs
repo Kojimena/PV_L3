@@ -6,20 +6,20 @@ using UnityEngine.SceneManagement;
 public class KissTrigger : MonoBehaviour
 {
     [Header("Detección")]
-    [SerializeField] private Transform player;        // Si lo dejas vacío, busca por Tag
+    [SerializeField] private Transform player;        
     [SerializeField] private string playerTag = "Player";
-    [SerializeField] private float radius = 1.5f;     // Distancia máxima para activar
-    [SerializeField] private float fovAngle = 60f;    // Ángulo del cono (grados, total)
+    [SerializeField] private float radius = 1.5f;    
+    [SerializeField] private float fovAngle = 60f;    
 
-    [Header("Animación de la chica")]
-    [SerializeField] private Animator girlAnimator;   // Animator de la chica (si vacío, busca en hijos)
+    [Header("Anim")]
+    [SerializeField] private Animator girlAnimator;   
     [SerializeField] private string kissTrigger = "Kiss";
-    [SerializeField] private float endDelay = 5.0f;   // Espera para que se vea el beso
+    [SerializeField] private float endDelay = 5.0f;   
 
-    [Header("Final del juego")]
-    [SerializeField] private string winSceneName = "";   // Si lo pones, carga esta escena
-    [SerializeField] private bool quitIfNoScene = true;  // Si no hay escena, cerrar juego
-    [SerializeField] private bool freezeIfEditor = true; // En editor, pausar TimeScale
+    [Header("Final")]
+    [SerializeField] private string winSceneName = "";   
+    [SerializeField] private bool quitIfNoScene = true;  
+    [SerializeField] private bool freezeIfEditor = true; 
 
     private bool done;
 
@@ -41,7 +41,6 @@ public class KissTrigger : MonoBehaviour
         float dist = toPlayer.magnitude;
         if (dist > radius) return;
 
-        // ¿El jugador está dentro del cono frente a la chica?
         toPlayer.y = 0f;
         Vector3 forward = transform.forward; forward.y = 0f;
         if (toPlayer.sqrMagnitude < 0.0001f) return;
@@ -49,7 +48,6 @@ public class KissTrigger : MonoBehaviour
         float angle = Vector3.Angle(forward.normalized, toPlayer.normalized);
         if (angle > fovAngle * 0.5f) return;
 
-        // ¡Condiciones cumplidas! Disparar beso de la chica y terminar.
         StartCoroutine(DoKissAndEnd());
     }
 
@@ -57,26 +55,21 @@ public class KissTrigger : MonoBehaviour
     {
         done = true;
 
-        // Opcional: parar su NavMeshAgent para que no se mueva durante el beso
         if (TryGetComponent(out NavMeshAgent girlAgent))
         {
             girlAgent.isStopped = true;
             girlAgent.ResetPath();
         }
 
-        // Mirar suavemente al jugador
         Vector3 look = player.position - transform.position; look.y = 0f;
         if (look.sqrMagnitude > 0.0001f)
             transform.rotation = Quaternion.LookRotation(look);
 
-        // Disparar animación de la chica
         girlAnimator.ResetTrigger(kissTrigger);
         girlAnimator.SetTrigger(kissTrigger);
 
-        // Esperar para que se vea la animación
         if (endDelay > 0f) yield return new WaitForSeconds(endDelay);
 
-        // Final del juego
         EndGame();
     }
 
@@ -103,7 +96,6 @@ public class KissTrigger : MonoBehaviour
         }
     }
 
-    // Gizmos para ver el radio y el cono en escena
     void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.2f, 0.5f, 0.25f);

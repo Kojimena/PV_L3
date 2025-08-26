@@ -4695,17 +4695,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 60af0a09a71e6438aafd8185ff04cacb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  agent: {fileID: 1695221534}
-  animator: {fileID: 1751989911}
-  playerTag: Player
-  rescueTarget: {fileID: 1591646646}
-  viewRadius: 20
-  viewAngle: 360
-  obstacleMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  loseTargetAfter: 3
-  rotateTowardsPlayerSpeed: 9
+  waypoints: []
+  rescueTarget: {fileID: 67310821}
+  objective: {fileID: 1420535853}
 --- !u!136 &1695221537
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -4781,10 +4773,38 @@ PrefabInstance:
       propertyPath: m_Name
       value: Pumpkinhulk L Shaw@T-Pose
       objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5465940246521907071, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: eb8b6d1e72ce94de499872001a7051d4, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -4793,11 +4813,6 @@ PrefabInstance:
 --- !u!4 &1751989910 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
-  m_PrefabInstance: {fileID: 1751989909}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &1751989911 stripped
-Animator:
-  m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 329e042c2d4c0481bbc04ce65a2ccc21, type: 3}
   m_PrefabInstance: {fileID: 1751989909}
   m_PrefabAsset: {fileID: 0}
 --- !u!1 &1879618254
