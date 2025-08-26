@@ -93,11 +93,11 @@ public class GrilBehaviour : MonoBehaviour
             if (hits[i].CompareTag(enemyTag))
             {
                 sceneTriggered = true;
-                SceneManager.LoadScene(sceneToLoad);
                 if (sfxSource && screamSfx)
                 {
                     sfxSource.PlayOneShot(screamSfx);
                 }
+                SceneManager.LoadScene(sceneToLoad);
                 break;
             }
         }
