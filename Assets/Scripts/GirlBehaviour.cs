@@ -15,10 +15,9 @@ public class GrilBehaviour : MonoBehaviour
     [SerializeField] private string sceneToLoad = "LostMenu";
     [SerializeField] private float detectionRadius = 3f;
     [SerializeField] private LayerMask detectionMask = ~0;
-    
+
     [SerializeField] private AudioSource sfxSource;
     [SerializeField] private AudioClip screamSfx;
-
 
     private int wpIndex = 0;
     private State currentState = State.Idle;
@@ -93,14 +92,24 @@ public class GrilBehaviour : MonoBehaviour
             if (hits[i].CompareTag(enemyTag))
             {
                 sceneTriggered = true;
-                if (sfxSource && screamSfx)
-                {
-                    sfxSource.PlayOneShot(screamSfx);
-                }
+                if (screamSfx) PlaySfxPersist(screamSfx, 1f);
                 SceneManager.LoadScene(sceneToLoad);
                 break;
             }
         }
+    }
+
+    private void PlaySfxPersist(AudioClip clip, float volume = 1f)
+    {
+        var go = new GameObject("OneShotSFX_Persistent");
+        DontDestroyOnLoad(go);
+        var src = go.AddComponent<AudioSource>();
+        src.playOnAwake = false;
+        src.spatialBlend = 0f;
+        src.volume = volume;
+        src.clip = clip;
+        src.Play();
+        Destroy(go, clip.length);
     }
 
     private void OnDrawGizmosSelected()
