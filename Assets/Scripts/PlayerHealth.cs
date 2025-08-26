@@ -53,6 +53,6 @@ public class PlayerHealth : MonoBehaviour
     {
         Debug.Log("¡Jugador muerto!");
         gameObject.SetActive(false); 
-        // o UnityEngine.SceneManagement.SceneManager.LoadScene("NombreDeLaEscena");
+        UnityEngine.SceneManagement.SceneManager.LoadScene("LostMenu");
     }
 }

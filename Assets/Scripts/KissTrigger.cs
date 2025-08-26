@@ -85,7 +85,7 @@ public class KissTrigger : MonoBehaviour
         if (freezeIfEditor)
         {
             Time.timeScale = 0f;
-            Debug.Log("Juego finalizado (Editor): beso completado.");
+            Debug.Log("Juego finalizado.");
             return;
         }
 #endif
